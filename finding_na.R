@@ -5,7 +5,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 
-
+SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
 #AGS <- SIAP %>% 
 BC <- SIAP %>% 
   #filter(state == "aguascalientes", crop == "aceituna") %>% 
@@ -24,7 +24,7 @@ colnames(period) <- c("year")
 
 
 #amigo <- left_join(period, AGS)
-amigo <- left_join(period, BC)
+amigo <- left_join(period, BC$year)
 #tmp <- left_join(period, AGS)
 #tmp <- union_all(period, AGS)
 #tmp <- cbind(AGS, period)
@@ -74,7 +74,7 @@ aceituna_state_obs
 one_crop <- SIAP %>% 
   #filter(state == "aguascalientes", crop == "aceituna") %>% 
   #filter(state == "aguascalientes", type == "food") %>% 
-  filter(crop == "jitomate") %>% 
+  filter(crop == "mango") %>% 
   #select(crop:year)# %>% 
   group_by(year, state) %>% 
   summarise(sum_prod = sum(production), .groups = 'drop')# %>% 
@@ -89,10 +89,53 @@ plot_obs <- crop_full %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   scale_y_continuous(name = "number of observations") 
 plot_obs
-####
 
+##### A data frama with all years and all states for states that report mango production #####
+period <- tibble(rep(c(1980:2016), times = 26)) #26 states report mango production
+colnames(period) <- c("year") 
+states <- tibble(rep(c("baja california", "baja california sur", "campeche", 
+                       "chiapas", "colima", "durango",
+                        "guanajuato", "guerrero", "hidalgo", "jalisco", 
+                       "mexico", "michoacan", "morelos", "nayarit", "oaxaca", 
+                       "puebla", "queretaro", "quintana roo",
+                        "san luis potosi", "sinaloa", "sonora", "tabasco", 
+                       "tamaulipas", "veracruz", "yucatan", "zacatecas"), times = 37))
+colnames(states) <- c("state") 
+states <- states %>% 
+  arrange(state)
+states_period <- cbind(states, period)
 
+##### Mangoes data frame #####
 
+mango <- left_join(states_period, one_crop, by=c("state", "year"))
+mango <- mango %>%  
+  transform(i=as.numeric(factor(state))) %>% 
+  transform(t=as.numeric(factor(year))) %>% 
+  group_by(year) %>% 
+  arrange(state)
+
+number_obs <- mango %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(sum_prod)))
+
+plot_mango <- number_obs %>% 
+  ggplot(aes(state, obs)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  scale_y_continuous(name = "number of observations") 
+plot_mango
+
+mango_complete <- number_obs %>% 
+  filter(obs > 34)
+
+#mango_states_complete <- droplevels(mango$state == "baja california")
+
+mango_ts <- mango %>% 
+   ggplot(aes(year, sum_prod, color=state)) + 
+  geom_line()
+mango_ts  
+
+summary(mango)
 
 
 
