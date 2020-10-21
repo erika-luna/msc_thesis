@@ -38,3 +38,10 @@ tmp <- ggplot(SIAP, aes(YearAgricola, Valor, colour=new.crop, group=new.crop)) +
     #stat_summary(fun.y=mean, geom="point", position=pd) +
     theme_bw()
 tmp
+
+# add variable "area"
+SIAP <- SIAP %>% 
+  mutate(area = round(production / yield, digits = 2))
+
+
+write.csv(SIAP, file = "SIAP.csv")

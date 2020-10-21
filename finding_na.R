@@ -137,5 +137,5 @@ mango_ts
 
 summary(mango)
 
-
+write.csv(mango, file = "mango.csv")
 

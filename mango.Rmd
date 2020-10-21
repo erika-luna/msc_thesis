@@ -1,0 +1,103 @@
+---
+title: "Mango"
+author: "Erika Luna"
+date: "21/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This document explores the mango data from SIAP - Mexico.
+*Data has been summarized at the state level.
+*There are 962 observations total, one observation/year for each state. 
+
+
+```{r packages, echo=FALSE}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+
+SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
+```
+
+## Select a crop.
+In this case we selected "mango"
+```{r crop}
+one_crop <- SIAP %>% 
+  filter(crop == "mango") %>% 
+  group_by(year, state) %>% 
+  summarise(ag_yield = sum(production)/sum(area),
+            ag_prod = sum(production),
+            ag_planted = sum(planted),
+            ag_harv = sum(harvested), 
+            ag_losses = sum(losses))
+```
+
+
+## Number of NA's
+```{r NAs, echo=FALSE}
+crop_full <- one_crop %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_prod)))
+
+plot_obs <- crop_full %>% 
+  ggplot(aes(state, obs)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  scale_y_continuous(name = "number of observations") 
+plot_obs
+```
+
+## Panel data
+A data frama with all years and all states that grow mango.
+```{r Panel}
+period <- tibble(rep(c(1980:2016), times = 26)) #26 states report mango production
+colnames(period) <- c("year") 
+states <- tibble(rep(c("baja california", "baja california sur", "campeche", 
+                       "chiapas", "colima", "durango",
+                        "guanajuato", "guerrero", "hidalgo", "jalisco", 
+                       "mexico", "michoacan", "morelos", "nayarit", "oaxaca", 
+                       "puebla", "queretaro", "quintana roo",
+                        "san luis potosi", "sinaloa", "sonora", "tabasco", 
+                       "tamaulipas", "veracruz", "yucatan", "zacatecas"), times = 37))
+colnames(states) <- c("state") 
+states <- states %>% 
+  arrange(state)
+states_period <- cbind(states, period)
+```
+
+
+## Data frame for Mango
+```{r Mango}
+mango <- left_join(states_period, one_crop, by=c("state", "year"))
+mango <- as.tibble(mango %>%  
+  transform(i=as.numeric(factor(state))) %>% 
+  transform(t=as.numeric(factor(year))) %>% 
+  group_by(year) %>% 
+  arrange(state)) %>% 
+  DT::datatable()
+```
+
+## Plots
+```{r}
+mango_ts <- mango %>% 
+   #ggplot(aes(year, ag_prod, color=state)) + 
+  #ggplot(aes(year, ag_yield, color=state)) +
+  #ggplot(aes(year, ag_planted, color=state)) + 
+  #ggplot(aes(year, ag_harv, color=state)) + 
+  ggplot(aes(year, ag_losses)) + 
+  geom_line()+
+  #facet_wrap(~state, scales="free_y", ncol=5) 
+  facet_wrap(~state, ncol=5)
+mango_ts  
+```
+
+
+
+
+
+
+
