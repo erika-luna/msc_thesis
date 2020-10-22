@@ -2,7 +2,9 @@
 title: "Mango"
 author: "Erika Luna"
 date: "21/10/2020"
-output: html_document
+output: 
+  html_document:
+    keep_md: true
 ---
 
 ```{r setup, include=FALSE}
@@ -89,7 +91,7 @@ mango %>%
 
 
 ## Plots
-###Production
+### Production
 
 ```{r}
 mango %>% 
@@ -126,7 +128,7 @@ mango_ts <- mango %>%
 mango_ts  
 ```
 
-###Yield
+### Yield
 ```{r}
 mango %>% 
   group_by(state) %>% 
@@ -162,7 +164,7 @@ mango_ts <- mango %>%
 mango_ts  
 ```
 
-###Area
+### Area
 ```{r}
 mango %>% 
   group_by(state) %>% 
@@ -198,7 +200,7 @@ mango_ts <- mango %>%
 mango_ts  
 ```
 
-###Losses
+### Losses
 ```{r}
 mango %>% 
   group_by(state) %>% 
