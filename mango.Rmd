@@ -11,25 +11,28 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document explores the mango data from SIAP - Mexico.
 *Data has been summarized at the state level.
-*There are 962 observations total, one observation/year for each state. 
+*26 states report mango production during the time period of 1980 - 2016.
+*There are 962 observations total (26 states x 37 years), one observation/year for each state. 
 
 
 ```{r packages, echo=FALSE}
+#Load packages
 library(tidyverse)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(DT)
 
+#Load data
 SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
 ```
 
-## Select a crop.
-In this case we selected "mango"
+## Select a crop
 ```{r crop}
 one_crop <- SIAP %>% 
   filter(crop == "mango") %>% 
   group_by(year, state) %>% 
-  summarise(ag_yield = sum(production)/sum(area),
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
             ag_prod = sum(production),
             ag_planted = sum(planted),
             ag_harv = sum(harvested), 
@@ -41,13 +44,14 @@ one_crop <- SIAP %>%
 ```{r NAs, echo=FALSE}
 crop_full <- one_crop %>% 
   group_by(state) %>% 
-  summarise(obs = sum(!is.na(ag_prod)))
+  summarise(obs = sum(!is.na(ag_prod))) 
 
 plot_obs <- crop_full %>% 
   ggplot(aes(state, obs)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  scale_y_continuous(name = "number of observations") 
+  scale_y_continuous(name = "number of observations") +
+  ggtitle("NAs for production")
 plot_obs
 ```
 
@@ -73,31 +77,159 @@ states_period <- cbind(states, period)
 ## Data frame for Mango
 ```{r Mango}
 mango <- left_join(states_period, one_crop, by=c("state", "year"))
-mango <- as.tibble(mango %>%  
+mango <- mango %>%  
   transform(i=as.numeric(factor(state))) %>% 
   transform(t=as.numeric(factor(year))) %>% 
   group_by(year) %>% 
-  arrange(state)) %>% 
+  arrange(state) 
+
+mango %>% 
   DT::datatable()
 ```
 
+
 ## Plots
+###Production
+
 ```{r}
+mango %>% 
+  group_by(state) %>% 
+  summarise(max_prod = max(ag_prod, na.rm=T),
+            min_prod = min(ag_prod, na.rm=T),
+            range_prod = max(ag_prod, na.rm=T) - min(ag_prod, na.rm=T),
+            sd_prod = sd(ag_prod, na.rm=T),
+            mean_prod = mean(ag_prod, na.rm=T),
+            median_prod = median(ag_prod, na.rm=T)) %>% 
+  knitr::kable()
+```
+
+```{r}
+number_obs <- mango %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_prod)))
+
+mango_complete <- number_obs %>% 
+  filter(obs > 34)
+mango_complete
+
 mango_ts <- mango %>% 
-   #ggplot(aes(year, ag_prod, color=state)) + 
-  #ggplot(aes(year, ag_yield, color=state)) +
-  #ggplot(aes(year, ag_planted, color=state)) + 
-  #ggplot(aes(year, ag_harv, color=state)) + 
-  ggplot(aes(year, ag_losses)) + 
+  ggplot(aes(year, ag_prod)) + 
   geom_line()+
-  #facet_wrap(~state, scales="free_y", ncol=5) 
-  facet_wrap(~state, ncol=5)
+  ylab("Production (tonnes)") +
+  xlab("Years") +
+  ggtitle("Mango Production 1980 - 2016") +
+  geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
 mango_ts  
 ```
 
+###Yield
+```{r}
+mango %>% 
+  group_by(state) %>% 
+  summarise(max_yield = max(ag_yield, na.rm=T),
+            min_yield = min(ag_yield, na.rm=T),
+            range_yield = max(ag_yield, na.rm=T) - min(ag_yield, na.rm=T),
+            sd_yield = sd(ag_yield, na.rm=T),
+            mean_yield = mean(ag_yield, na.rm=T),
+            median_yield = median(ag_yield, na.rm=T)) %>% 
+  knitr::kable()
+```
 
+```{r}
+number_obs <- mango %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_yield)))
 
+mango_complete <- number_obs %>% 
+  filter(obs > 34)
+mango_complete
 
+mango_ts <- mango %>% 
+  ggplot(aes(year, ag_yield)) + 
+  geom_line()+
+  ylab("Yield (tonnes/ha)") +
+  xlab("Years") +
+  ggtitle("Mango Yields 1980 - 2016") +
+  geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
+mango_ts  
+```
 
+###Area
+```{r}
+mango %>% 
+  group_by(state) %>% 
+  summarise(max_area = max(ag_harv, na.rm=T),
+            min_area = min(ag_harv, na.rm=T),
+            range_area = max(ag_harv, na.rm=T) - min(ag_harv, na.rm=T),
+            sd_area = sd(ag_harv, na.rm=T),
+            mean_area = mean(ag_harv, na.rm=T),
+            median_area = median(ag_harv, na.rm=T)) %>% 
+  knitr::kable()
+```
 
+```{r}
+number_obs <- mango %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_harv)))
 
+mango_complete <- number_obs %>% 
+  filter(obs > 34)
+mango_complete
+
+mango_ts <- mango %>% 
+  ggplot(aes(year, ag_harv)) + 
+  geom_line()+
+  ylab("Area harvested (ha)") +
+  xlab("Years") +
+  ggtitle("Mango - Area Harvested (ha) 1980 - 2016") +
+  geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
+mango_ts  
+```
+
+###Losses
+```{r}
+mango %>% 
+  group_by(state) %>% 
+  summarise(max_losses = max(ag_losses, na.rm=T),
+            min_losses = min(ag_losses, na.rm=T),
+            range_losses = max(ag_losses, na.rm=T) - min(ag_losses, na.rm=T),
+            sd_losses = sd(ag_losses, na.rm=T),
+            mean_losses = mean(ag_losses, na.rm=T),
+            median_losses = median(ag_losses, na.rm=T)) %>% 
+  knitr::kable()
+```
+
+```{r}
+number_obs <- mango %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_losses)))
+
+mango_complete <- number_obs %>% 
+  filter(obs > 34)
+mango_complete
+
+mango_ts <- mango %>% 
+  ggplot(aes(year, ag_harv)) + 
+  geom_line()+
+  ylab("Losses (ha)") +
+  xlab("Years") +
+  ggtitle("Mango - Losses (planted-harvested) (ha) 1980 - 2016") +
+  geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
+mango_ts  
+```

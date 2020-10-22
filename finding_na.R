@@ -4,18 +4,35 @@ library(tidyverse)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(DT)
 
 SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
+
+
+
+
+
+
+#round(x, digits = 0)
 #AGS <- SIAP %>% 
-BC <- SIAP %>% 
-  #filter(state == "aguascalientes", crop == "aceituna") %>% 
+tmp <- SIAP %>% 
+#BC <- SIAP %>% 
+  filter(state == "campeche", crop == "mango") %>% 
   #filter(state == "aguascalientes", type == "food") %>% 
-  filter(state == "baja california", type == "food") %>% 
+  #filter(state == "baja california", type == "food") %>% 
   #select(crop:year)# %>% 
   group_by(crop, year) %>% 
- summarise(sum_prod = sum(production), .groups = 'drop')# %>% 
+  summarise(ag_yield = sum(production)/sum(area),
+            ag_prod = sum(production),
+            ag_planted = sum(planted),
+            ag_harv = sum(harvested), 
+            ag_losses = sum(losses))
+ #summarise(sum_prod = sum(production), .groups = 'drop')# %>% 
   #summarise(n_distinct(crop))
  # DT::datatable()
+
+write.csv(tmp, file = "SIAP_mango.csv")
+
 
 period <- tibble(c(1980:2016))
   
@@ -77,11 +94,17 @@ one_crop <- SIAP %>%
   filter(crop == "mango") %>% 
   #select(crop:year)# %>% 
   group_by(year, state) %>% 
-  summarise(sum_prod = sum(production), .groups = 'drop')# %>% 
+  #summarise(sum_prod = sum(production), .groups = 'drop')# %>% 
+  summarise(ag_yield = sum(production)/sum(harvested),
+            ag_prod = sum(production),
+            ag_planted = sum(planted),
+            ag_harv = sum(harvested), 
+            ag_losses = sum(losses))
+
 
 crop_full <- one_crop %>% 
   group_by(state) %>% 
-  summarise(obs = sum(!is.na(sum_prod)))
+  summarise(obs = sum(!is.na(ag_prod)))
 
 plot_obs <- crop_full %>% 
   ggplot(aes(state, obs)) +
@@ -116,7 +139,11 @@ mango <- mango %>%
 
 number_obs <- mango %>% 
   group_by(state) %>% 
-  summarise(obs = sum(!is.na(sum_prod)))
+  summarise(obs = sum(!is.na(ag_prod)))
+
+number_obs  %>% 
+  DT::datatable()
+
 
 plot_mango <- number_obs %>% 
   ggplot(aes(state, obs)) +
@@ -127,15 +154,43 @@ plot_mango
 
 mango_complete <- number_obs %>% 
   filter(obs > 34)
-
+mango_complete %>% 
+  DT::datatable()
 #mango_states_complete <- droplevels(mango$state == "baja california")
 
 mango_ts <- mango %>% 
-   ggplot(aes(year, sum_prod, color=state)) + 
-  geom_line()
+  #ggplot(aes(year, ag_prod)) + 
+  #ggplot(aes(year, ag_yield)) +
+  #ggplot(aes(year, ag_planted)) + 
+  #ggplot(aes(year, ag_harv)) + 
+  #ggplot(aes(year, ag_losses)) + 
+  geom_line()+
+  #ylab("Production (tonnes)") +
+  ylab("Losses (ha)") +
+  xlab("Years") +
+  #ggtitle("Mango Production 1980 - 2016") +
+  ggtitle("Mango - Losses (planted - harvested) 1980 - 2016") +
+  geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
 mango_ts  
+#ggsave("mango_prod.png")
+ggsave("mango_losses.png")
 
 summary(mango)
 
 write.csv(mango, file = "mango.csv")
 
+#### Descriptive Statistics ####
+
+mango %>% 
+  group_by(state) %>% 
+  summarise(max_prod = max(ag_prod, na.rm=T),
+            min_prod = min(ag_prod, na.rm=T),
+            range_prod = max(ag_prod, na.rm=T) - min(ag_prod, na.rm=T),
+            sd_prod = sd(ag_prod, na.rm=T),
+            mean_prod = mean(ag_prod, na.rm=T),
+            median_prod = median(ag_prod, na.rm=T))
+#tapply(mango$ag_prod, mango$state, summary)
