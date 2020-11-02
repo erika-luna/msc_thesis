@@ -8,13 +8,13 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, out.width='950px', dpi=300)
 ```
 
 This document explores the mango data from SIAP - Mexico.
-*Data has been summarized at the state level.
-*26 states report mango production during the time period of 1980 - 2016.
-*There are 962 observations total (26 states x 37 years), one observation/year for each state. 
+- Data has been summarized at the state level.
+- 26 states report mango production during the time period of 1980 - 2016.
+- There are 962 observations total (26 states x 37 years), one observation/year for each state. 
 
 
 ```{r packages, echo=FALSE}
@@ -42,7 +42,7 @@ one_crop <- SIAP %>%
 ```
 
 
-## Number of NA's
+## Number of observations
 ```{r NAs, echo=FALSE}
 crop_full <- one_crop %>% 
   group_by(state) %>% 
@@ -52,8 +52,8 @@ plot_obs <- crop_full %>%
   ggplot(aes(state, obs)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  scale_y_continuous(name = "number of observations") +
-  ggtitle("NAs for production")
+  scale_y_continuous(name = "number of observations") #+
+  #ggtitle("NAs for production")
 plot_obs
 ```
 
@@ -106,6 +106,18 @@ mango %>%
 ```
 
 ```{r}
+mango %>% 
+  ggplot(aes(state, ag_prod)) +
+  geom_boxplot() +
+  ylab("Production (tonnes)") +
+  xlab("State") +
+  #scale_y_continuous(labels = comma) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+
+
+```{r}
 number_obs <- mango %>% 
   group_by(state) %>% 
   summarise(obs = sum(!is.na(ag_prod)))
@@ -120,6 +132,7 @@ mango_ts <- mango %>%
   ylab("Production (tonnes)") +
   xlab("Years") +
   ggtitle("Mango Production 1980 - 2016") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
   geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
             ymin = -Inf,ymax = Inf) +     
@@ -142,6 +155,17 @@ mango %>%
 ```
 
 ```{r}
+mango %>% 
+  ggplot(aes(state, ag_yield)) +
+  geom_boxplot() +
+  ylab("Yield (tonnes/ha)") +
+  xlab("State") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+
+
+```{r}
 number_obs <- mango %>% 
   group_by(state) %>% 
   summarise(obs = sum(!is.na(ag_yield)))
@@ -156,6 +180,7 @@ mango_ts <- mango %>%
   ylab("Yield (tonnes/ha)") +
   xlab("Years") +
   ggtitle("Mango Yields 1980 - 2016") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
   geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
             ymin = -Inf,ymax = Inf) +     
@@ -178,6 +203,17 @@ mango %>%
 ```
 
 ```{r}
+mango %>% 
+  ggplot(aes(state, ag_harv)) +
+  geom_boxplot() +
+  ylab("Area (tonnes)") +
+  xlab("State") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+
+
+```{r}
 number_obs <- mango %>% 
   group_by(state) %>% 
   summarise(obs = sum(!is.na(ag_harv)))
@@ -192,6 +228,7 @@ mango_ts <- mango %>%
   ylab("Area harvested (ha)") +
   xlab("Years") +
   ggtitle("Mango - Area Harvested (ha) 1980 - 2016") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
   geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
             ymin = -Inf,ymax = Inf) +     
@@ -214,6 +251,17 @@ mango %>%
 ```
 
 ```{r}
+mango %>% 
+  ggplot(aes(state, ag_losses)) +
+  geom_boxplot() +
+  ylab("Losses (ha)") +
+  xlab("State") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+
+
+```{r}
 number_obs <- mango %>% 
   group_by(state) %>% 
   summarise(obs = sum(!is.na(ag_losses)))
@@ -223,11 +271,12 @@ mango_complete <- number_obs %>%
 mango_complete
 
 mango_ts <- mango %>% 
-  ggplot(aes(year, ag_harv)) + 
+  ggplot(aes(year, ag_losses)) + 
   geom_line()+
   ylab("Losses (ha)") +
   xlab("Years") +
   ggtitle("Mango - Losses (planted-harvested) (ha) 1980 - 2016") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
   geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
             ymin = -Inf,ymax = Inf) +     
