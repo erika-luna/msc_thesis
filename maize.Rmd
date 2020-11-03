@@ -1,0 +1,312 @@
+---
+title: "Maize"
+author: "Erika Luna"
+date: "02/11/2020"
+output:
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, out.width = '950px', dpi = 300)
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r packages, echo=FALSE}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(DT)
+library(psych)
+```
+
+```{r load data}
+SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
+```
+
+```{r}
+one_crop <- SIAP %>% 
+  filter(crop == "maiz") %>% 
+  group_by(year, state) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+            ag_prod = sum(production),
+            ag_planted = sum(planted),
+            ag_harv = sum(harvested), 
+            ag_losses = sum(losses))
+
+one_crop %>% 
+  DT::datatable()
+```
+## Number of observations
+```{r NAs, echo=FALSE}
+crop_full <- one_crop %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_prod))) 
+
+plot_obs <- crop_full %>% 
+  ggplot(aes(state, obs)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  scale_y_continuous(name = "number of observations") #+
+  #ggtitle("NAs for production")
+plot_obs
+```
+## Panel data
+A data frama with all years and all states that grow maize.
+```{r Panel}
+period <- tibble(rep(c(1980:2016), times = 32)) #32 states report maize production
+colnames(period) <- c("year") 
+states <- tibble(rep(c("aguascalientes","baja california","baja california sur",
+                       "campeche", "chiapas", "chihuahua","coahuila","colima",
+                       "distrito federal","durango",
+                        "guanajuato", "guerrero", "hidalgo", "jalisco", 
+                       "mexico", "michoacan", "morelos", "nayarit","nuevo leon", 
+                       "oaxaca", "puebla", "queretaro", "quintana roo",
+                        "san luis potosi", "sinaloa", "sonora", "tabasco", 
+                       "tamaulipas", "tlaxcala","veracruz", "yucatan", "zacatecas"), times = 37))
+colnames(states) <- c("state") 
+states <- states %>% 
+  arrange(state)
+states_period <- cbind(states, period)
+```
+
+## Data frame for Maize
+```{r maize}
+maize <- left_join(states_period, one_crop, by=c("state", "year"))
+maize <- maize %>%  
+  transform(i=as.numeric(factor(state))) %>% 
+  transform(t=as.numeric(factor(year))) %>% 
+  group_by(year) %>% 
+  arrange(state) 
+
+maize %>% 
+  DT::datatable()
+```
+
+## Descriptive Statistics
+```{r}
+describe(maize$ag_yield)
+
+summary(maize)
+ggplot(maize) +
+  aes(x = ag_yield) +
+  geom_histogram()
+```
+```{r}
+ggplot(maize) +
+  aes(x = ag_yield) +
+  geom_density()
+```
+
+```{r}
+maize %>% 
+  group_by(state) %>% 
+  complete.cases(ag_yield)
+```
+```{r}
+maize %>%
+  group_by(state) %>%
+  summarize(max_yield = max(ag_yield,  na.rm=TRUE),
+            min_yield = min(ag_yield,  na.rm=TRUE),
+            range_yield = max(ag_yield,  na.rm=TRUE) - min(ag_yield,  na.rm=TRUE),
+            sd_yield = sd(ag_yield,  na.rm=TRUE),
+            mean_yield = mean(ag_yield,  na.rm=TRUE),
+            median_yield = median(ag_yield,  na.rm=TRUE)) %>% 
+  knitr::kable()
+```
+
+
+## Plots
+### Production
+
+```{r}
+maize %>% 
+  group_by(state) %>% 
+  summarise(max_prod = max(ag_prod, na.rm=T),
+            min_prod = min(ag_prod, na.rm=T),
+            range_prod = max(ag_prod, na.rm=T) - min(ag_prod, na.rm=T),
+            sd_prod = sd(ag_prod, na.rm=T),
+            mean_prod = mean(ag_prod, na.rm=T),
+            median_prod = median(ag_prod, na.rm=T)) %>% 
+  knitr::kable()
+```
+
+```{r}
+maize %>% 
+  ggplot(aes(state, ag_prod)) +
+  geom_boxplot() +
+  ylab("Production (tonnes)") +
+  xlab("State") +
+  #scale_y_continuous(labels = comma) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+```{r}
+number_obs <- maize %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_prod)))
+
+maize_complete <- number_obs %>% 
+  filter(obs > 34)
+maize_complete
+
+maize_ts <- maize %>% 
+  ggplot(aes(year, ag_prod)) + 
+  geom_line()+
+  ylab("Production (tonnes)") +
+  xlab("Years") +
+  ggtitle("maize Production 1980 - 2016") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
+maize_ts  
+```
+
+### Yield
+```{r}
+maize %>% 
+  group_by(state) %>% 
+  summarise(max_yield = max(ag_yield, na.rm=T),
+            min_yield = min(ag_yield, na.rm=T),
+            range_yield = max(ag_yield, na.rm=T) - min(ag_yield, na.rm=T),
+            sd_yield = sd(ag_yield, na.rm=T),
+            mean_yield = mean(ag_yield, na.rm=T),
+            median_yield = median(ag_yield, na.rm=T)) %>% 
+  knitr::kable()
+```
+
+```{r}
+maize %>% 
+  ggplot(aes(state, ag_yield)) +
+  geom_boxplot() +
+  ylab("Yield (tonnes/ha)") +
+  xlab("State") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+```{r}
+number_obs <- maize %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_yield)))
+
+maize_complete <- number_obs %>% 
+  filter(obs > 34)
+maize_complete
+
+maize_ts <- maize %>% 
+  ggplot(aes(year, ag_yield)) + 
+  geom_line()+
+  ylab("Yield (tonnes/ha)") +
+  xlab("Years") +
+  ggtitle("maize Yields 1980 - 2016") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
+maize_ts  
+```
+
+### Area
+```{r}
+maize %>% 
+  group_by(state) %>% 
+  summarise(max_area = max(ag_harv, na.rm=T),
+            min_area = min(ag_harv, na.rm=T),
+            range_area = max(ag_harv, na.rm=T) - min(ag_harv, na.rm=T),
+            sd_area = sd(ag_harv, na.rm=T),
+            mean_area = mean(ag_harv, na.rm=T),
+            median_area = median(ag_harv, na.rm=T)) %>% 
+  knitr::kable()
+```
+
+
+```{r}
+maize %>% 
+  ggplot(aes(state, ag_harv)) +
+  geom_boxplot() +
+  ylab("Area (tonnes)") +
+  xlab("State") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+```{r}
+number_obs <- maize %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_harv)))
+
+maize_complete <- number_obs %>% 
+  filter(obs > 34)
+maize_complete
+
+maize_ts <- maize %>% 
+  ggplot(aes(year, ag_harv)) + 
+  geom_line()+
+  ylab("Area harvested (ha)") +
+  xlab("Years") +
+  ggtitle("maize - Area Harvested (ha) 1980 - 2016") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
+maize_ts  
+```
+
+### Losses
+```{r}
+maize %>% 
+  group_by(state) %>% 
+  summarise(max_losses = max(ag_losses, na.rm=T),
+            min_losses = min(ag_losses, na.rm=T),
+            range_losses = max(ag_losses, na.rm=T) - min(ag_losses, na.rm=T),
+            sd_losses = sd(ag_losses, na.rm=T),
+            mean_losses = mean(ag_losses, na.rm=T),
+            median_losses = median(ag_losses, na.rm=T)) %>% 
+  knitr::kable()
+```
+
+```{r}
+maize %>% 
+  ggplot(aes(state, ag_losses)) +
+  geom_boxplot() +
+  ylab("Losses (ha)") +
+  xlab("State") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+```{r}
+number_obs <- maize %>% 
+  group_by(state) %>% 
+  summarise(obs = sum(!is.na(ag_losses)))
+
+maize_complete <- number_obs %>% 
+  filter(obs > 34)
+maize_complete
+
+maize_ts <- maize %>% 
+  ggplot(aes(year, ag_losses)) + 
+  geom_line()+
+  ylab("Losses (ha)") +
+  xlab("Years") +
+  ggtitle("maize - Losses (planted-harvested) (ha) 1980 - 2016") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+  #facet_wrap(~state, ncol=5)
+maize_ts  
+```

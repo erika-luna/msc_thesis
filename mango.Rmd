@@ -29,7 +29,7 @@ library(DT)
 SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
 ```
 
-## Select a crop
+## Mango
 ```{r crop}
 one_crop <- SIAP %>% 
   filter(crop == "mango") %>% 
@@ -56,6 +56,10 @@ plot_obs <- crop_full %>%
   #ggtitle("NAs for production")
 plot_obs
 ```
+
+
+
+
 
 ## Panel data
 A data frama with all years and all states that grow mango.
