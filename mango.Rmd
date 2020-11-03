@@ -242,19 +242,18 @@ mango_ts
 ```
 
 ### Losses
-```{r}
-mango %>% 
-  group_by(state) %>% 
-  summarise(max_losses = max(ag_losses, na.rm=T),
-            min_losses = min(ag_losses, na.rm=T),
-            range_losses = max(ag_losses, na.rm=T) - min(ag_losses, na.rm=T),
-            sd_losses = sd(ag_losses, na.rm=T),
-            mean_losses = mean(ag_losses, na.rm=T),
-            median_losses = median(ag_losses, na.rm=T)) %>% 
-  knitr::kable()
+```{r losses, eval=FALSE, include=FALSE}
+#mango %>% 
+ # group_by(state) %>% 
+  #summarise(max_losses = max(ag_losses, na.rm=T),
+   #         min_losses = min(ag_losses, na.rm=T),
+    #        range_losses = max(ag_losses, na.rm=T) - min(ag_losses, na.rm=T),
+     #       sd_losses = sd(ag_losses, na.rm=T),
+      #     median_losses = median(ag_losses, na.rm=T)) %>% 
+  #knitr::kable()
 ```
 
-```{r}
+```{r losses boxplot, eval=FALSE, include=FALSE}
 mango %>% 
   ggplot(aes(state, ag_losses)) +
   geom_boxplot() +
@@ -263,9 +262,7 @@ mango %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
 ```
 
-
-
-```{r}
+```{r losses time series, eval=FALSE, include=FALSE}
 number_obs <- mango %>% 
   group_by(state) %>% 
   summarise(obs = sum(!is.na(ag_losses)))

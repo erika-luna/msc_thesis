@@ -105,7 +105,7 @@ ggplot(maize) +
   geom_density()
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 maize %>% 
   group_by(state) %>% 
   complete.cases(ag_yield)
@@ -310,3 +310,21 @@ maize_ts <- maize %>%
   #facet_wrap(~state, ncol=5)
 maize_ts  
 ```
+
+## Regression line
+```{r}
+maize_lm <- maize %>% 
+  ggplot(aes(year, ag_yield)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  ylab("Yield (tonnes/ha)") +
+  xlab("Years") +
+  ggtitle("Maize Yields") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+maize_lm
+```
+

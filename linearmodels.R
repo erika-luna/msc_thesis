@@ -113,7 +113,7 @@ maize_lm <- maize %>%
   geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
             ymin = -Inf,ymax = Inf) +     
-  facet_wrap(~state, scales="free_y", ncol=5, labeller = r2_labeller) 
+  facet_wrap(~state, scales="free_y", ncol=5) 
 maize_lm
 
 mango_lm <- mango %>% 
@@ -192,3 +192,13 @@ qplot(year, ag_yield, data = maize, size=I(2))+geom_smooth(method="lm")+
 
 
 facet_wrap(~state, scales="free_y", ncol=5, labeller = r2_labeller) 
+
+
+
+
+fitted_models = maize %>% group_by(state) %>% do(model = lm(ag_yield ~ year, data = .))
+fitted_models
+library(broom)
+fitted_models %>% tidy(model) %>% DT::datatable()
+
+

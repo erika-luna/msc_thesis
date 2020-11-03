@@ -193,4 +193,11 @@ mango %>%
             sd_prod = sd(ag_prod, na.rm=T),
             mean_prod = mean(ag_prod, na.rm=T),
             median_prod = median(ag_prod, na.rm=T))
+
+
+mango %>% 
+  ggplot(aes(state, ag_prod)) +
+  geom_boxplot()
+
+
 #tapply(mango$ag_prod, mango$state, summary)
