@@ -92,8 +92,6 @@ maize %>%
 
 ## Descriptive Statistics
 ```{r}
-describe(maize$ag_yield)
-
 summary(maize)
 ggplot(maize) +
   aes(x = ag_yield) +
@@ -328,3 +326,66 @@ maize_lm <- maize %>%
 maize_lm
 ```
 
+Yields ~ Temperature
+```{r load temp}
+tmax_summary <- read.csv("/Users/erikaluna/R\ Studio/climate_data/tmax_summary.csv")
+tmin_summary <- read.csv("/Users/erikaluna/R\ Studio/climate_data/tmin_summary.csv")
+maize_yields_tmax <- left_join(maize, tmax_summary, by = c("state" = "state", "year" = "year"))
+maize_yields_tmin <- left_join(maize, tmin_summary, by = c("state" = "state", "year" = "year"))
+```
+
+```{r yields - tmax}
+yt <- maize_yields_tmax %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  ggplot(aes(mean_tmax, ag_yield)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  ylab("Yield (tonnes/ha)") +
+  xlab("Temperature (ºC) ") +
+  ggtitle("Maize Yields ~ Max Temperature") +
+  #theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  facet_wrap(~state, scales="free_y") 
+yt
+```
+```{r yields - tmin}
+yt <- maize_yield_tmin %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  ggplot(aes(mean_tmin, ag_yield)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  ylab("Yield (tonnes/ha)") +
+  xlab("Temperature (ºC)") +
+  ggtitle("Maize Yields ~ Min Temperature") +
+  facet_wrap(~state, scales="free_y") 
+yt
+```
+
+
+## Losses ~ Temperature
+```{r losses - tmax}
+lt <- maize_yields_tmax %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  ggplot(aes(mean_tmax, ag_losses)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  ylab("Losses (ha)") +
+  xlab("Temperature (ºC) ") +
+  ggtitle("Maize Losses ~ Max Temperature") +
+  #theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  facet_wrap(~state, scales="free_y") 
+lt
+```
+
+```{r losses - tmin}
+lt <- maize_yields_tmin %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  ggplot(aes(mean_tmin, ag_losses)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  ylab("Losses (ha)") +
+  xlab("Temperature (ºC)") +
+  ggtitle("Maize Losses ~ Min Temperature") +
+  #theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  facet_wrap(~state, scales="free_y") 
+lt
+```

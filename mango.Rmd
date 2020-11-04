@@ -244,7 +244,7 @@ mango_ts <- mango %>%
 mango_ts  
 ```
 
-### Losses
+
 ```{r losses, eval=FALSE, include=FALSE}
 #mango %>% 
  # group_by(state) %>% 
@@ -289,7 +289,7 @@ mango_ts <- mango %>%
 mango_ts  
 ```
 
-Regression line
+## Yields ~ Time
 ```{r}
 mango_lm <- mango %>% 
   ggplot(aes(year, ag_yield)) + 
@@ -297,7 +297,7 @@ mango_lm <- mango %>%
   geom_smooth(method = "lm", se = T) +
   ylab("Yield (tonnes/ha)") +
   xlab("Years") +
-  ggtitle("mango Yields") +
+  ggtitle("Mango Yields") +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
   geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
@@ -306,27 +306,26 @@ mango_lm <- mango %>%
 mango_lm
 ```
 
+Yields ~ Temperature
 ```{r load temp}
 tmax_summary <- read.csv("/Users/erikaluna/R\ Studio/climate_data/tmax_summary.csv")
 tmin_summary <- read.csv("/Users/erikaluna/R\ Studio/climate_data/tmin_summary.csv")
-  
 ```
 
 ```{r}
-#yields_tmax <- dplyr::inner_join(mango, tmax_summary, by = "state")
 yields_tmax <- left_join(mango, tmax_summary, by = c("state" = "state", "year" = "year"))
 yield_tmin <- left_join(mango, tmin_summary, by = c("state" = "state", "year" = "year"))
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 mango_yields_temp <- yields_tmax %>% 
-  filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% #states that report mango in the northwestern region
   ggplot(aes(mean_tmax, ag_yield)) + 
   geom_point() +
   facet_wrap(~state, scales="free_y") 
 mango_yields_temp
 ```
-```{r}
+```{r eval=FALSE, include=FALSE}
 mango_yields_tmin <- yield_tmin %>% 
   filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% 
   ggplot(aes(mean_tmin, ag_yield)) + 
@@ -335,25 +334,30 @@ mango_yields_tmin <- yield_tmin %>%
 mango_yields_tmin
 ```
 
-```{r}
+```{r yields - tmax}
 mango_lm <- yields_tmax %>% 
   filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% 
   ggplot(aes(mean_tmax, ag_yield)) + 
   geom_point() +
   geom_smooth(method = "lm", se = T) +
   ggtitle("mango Yields") +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+   ylab("Yield (tonnes/ha)") +
+  xlab("Temperature (ºC) ") +
+  ggtitle("Mango Yields ~ Max Temperature") +
+  #theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
   facet_wrap(~state, scales="free_y") 
 mango_lm
 ```
-```{r}
+```{r yields - tmin}
 mango_lm <- yield_tmin %>% 
   filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% 
   ggplot(aes(mean_tmin, ag_yield)) + 
   geom_point() +
   geom_smooth(method = "lm", se = T) +
-  ggtitle("mango Yields") +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  ylab("Yield (tonnes/ha)") +
+  xlab("Temperature (ºC)") +
+  ggtitle("Mango Yields ~ Min Temperature") +
   facet_wrap(~state, scales="free_y") 
 mango_lm
 ```
+
