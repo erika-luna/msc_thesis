@@ -11,12 +11,10 @@ output:
 knitr::opts_chunk$set(echo = TRUE, out.width='950px', dpi=300)
 ```
 
-## R mark
 This document explores the mango data from SIAP - Mexico.
 - Data has been summarized at the state level.
 - 26 states report mango production during the time period of 1980 - 2016.
 - There are 962 observations total (26 states x 37 years), one observation/year for each state. 
-
 
 ```{r packages, echo=FALSE}
 #Load packages
@@ -24,6 +22,7 @@ library(tidyverse)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(ggpubr)
 library(DT)
 ```
 
@@ -31,6 +30,61 @@ library(DT)
 SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
 ```
 
+```{r irrigated}
+mango_irri_state <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year < 2002, crop == "mango", water == "irrigated") %>% 
+  select(year, state, water, yield, losses)
+#mango_irri_state %>% 
+  #DT::datatable()
+
+mango_irri_mun <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year > 2001, crop == "mango", water == "irrigated") %>% 
+  select(year, state, water, yield, losses)
+mango_irri_mun %>% 
+  DT::datatable()
+```
+
+```{r rainfed state}
+mango_rain_state <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year < 2002, crop == "mango", water == "rainfed") %>% 
+  select(year, state, water, yield, losses)
+#mango_rain_state %>% 
+  #DT::datatable()
+mango_rain_mun <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year > 2001, crop == "mango", water == "rainfed") %>% 
+  select(year, state, water, yield, losses)
+mango_rain_mun %>% 
+  DT::datatable()
+```
+
+```{r}
+mango_water_state <- bind_rows(mango_irri_state, mango_rain_state)
+mango_water_mun <- bind_rows(mango_irri_mun, mango_rain_mun)
+```
+
+```{r}
+mango_water_state %>% 
+  ggplot(aes(water, yield)) +
+  geom_boxplot() +
+  scale_y_continuous("Yield (ha)", trans = "log10") +
+  ylab("Yield (ha)") +
+  xlab("Water mode") +
+  ggtitle("Mango State level")
+  #scale_y_continuous(labels = comma) +
+  #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+```{r}
+mango_water_mun %>% 
+  ggplot(aes(water, yield)) +
+  geom_boxplot() +
+  scale_y_continuous("Yield (ha)", trans = "log10") +
+  ylab("Yield (ha)") +
+  xlab("Water mode") +
+  ggtitle("Mango Municipal level")
+  #scale_y_continuous(labels = comma) +
+  #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
 
 ## Mango
 ```{r crop}
@@ -268,7 +322,9 @@ m <- mango_nat %>%
   ggplot(aes(year, ag_yield)) + 
   geom_point() +
   geom_smooth(method = "lm", se = T) +
-  stat_cor(label.y = 15)+
+  stat_cor()+
+  #scale_y_continuous(trans = 'log10')+
+  #annotation_logticks(sides="lb")+
   ylab("Yield (tonnes/ha)") +
   xlab("Years") +
   ggtitle("MANGO Yields from 1980 to 2016")# +
@@ -285,7 +341,7 @@ lt <- mango %>%
   xlab("Years") +
   ggtitle("Mango Yields") +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
-  geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
+  geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
             ymin = -Inf,ymax = Inf) +     
   facet_wrap(~state, scales="free_y", ncol=5) 
@@ -336,12 +392,13 @@ mango_lm <- mango_tmax %>%
   ggplot(aes(mean_tmax, ag_yield)) + 
   geom_point() +
   geom_smooth(method = "lm", se = T) +
+  #scale_y_continuous(trans = 'log10')+
   ggtitle("mango Yields") +
    ylab("Yield (tonnes/ha)") +
   xlab("Temperature (ºC) ") +
-  ggtitle("Mango Yields ~ Max Temperature") #+
-  #theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
-  #facet_wrap(~state, scales="free_y") 
+  ggtitle("Mango Yields ~ Max Temperature") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  facet_wrap(~state, scales="free_y") 
 mango_lm
 ```
 ```{r states - yields - tmin}
@@ -352,6 +409,7 @@ mango_lm <- mango_tmin %>%
   geom_smooth(method = "lm", se = T) +
   ylab("Yield (tonnes/ha)") +
   xlab("Temperature (ºC)") +
+  #scale_y_continuous(trans = 'log10')+
   ggtitle("Mango Yields ~ Min Temperature") +
   facet_wrap(~state, scales="free_y") 
 mango_lm

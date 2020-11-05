@@ -14,9 +14,8 @@ knitr::opts_chunk$set(echo = TRUE, out.width = '950px', dpi = 300)
 
 ## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+This document explores the maize data from SIAP - Mexico.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r packages, echo=FALSE}
 library(tidyverse)
@@ -70,19 +69,23 @@ maize_water_mun <- bind_rows(maize_irri_mun, maize_rain_mun)
 maize_water_state %>% 
   ggplot(aes(water, yield)) +
   geom_boxplot() +
+  scale_y_continuous("Yield (ha)", trans = "log10") +
   ylab("Yield (ha)") +
   xlab("Water mode") +
+  ggtitle("Maize State level")
   #scale_y_continuous(labels = comma) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+  #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
 ```
 ```{r}
 maize_water_mun %>% 
   ggplot(aes(water, yield)) +
   geom_boxplot() +
+  scale_y_continuous("Yield (ha)", trans = "log10") +
   ylab("Yield (ha)") +
   xlab("Water mode") +
+  ggtitle("Maize Municipal level")
   #scale_y_continuous(labels = comma) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+  #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
 ```
 
 
@@ -182,11 +185,7 @@ ggplot(maize) +
   geom_density()
 ```
 
-```{r eval=FALSE, include=FALSE}
-maize %>% 
-  group_by(state) %>% 
-  complete.cases("baja california")
-```
+
 ```{r}
 maize %>%
   group_by(state) %>%
@@ -271,16 +270,6 @@ maize %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
 ```
 
-```{r}
-maize %>% 
-  ggplot(aes(water, ag_yield)) +
-  geom_boxplot() +
-  ylab("Yield (tonnes/ha)") +
-  xlab("State") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
-```
-
-
 
 ```{r}
 number_obs <- maize %>% 
@@ -296,7 +285,7 @@ maize_ts <- maize %>%
   geom_line()+
   ylab("Yield (tonnes/ha)") +
   xlab("Years") +
-  ggtitle("maize Yields 1980 - 2016") +
+  ggtitle("Maize Yields 1980 - 2016") +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
   geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
@@ -479,7 +468,7 @@ y
 ```
 
 ```{r states - yields - tmin}
-yt <- maize_yield_tmin %>% 
+yt <- maize_yields_tmin %>% 
   filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora")) %>% 
   ggplot(aes(mean_tmin, ag_yield)) + 
   geom_point() +

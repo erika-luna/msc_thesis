@@ -240,11 +240,73 @@ h <- tmp %>%
 h
 
 
+#### Production and Harvested Area ####
+ 
+ylim.prim <- c(0, 100000000)   # in this example, precipitation
+ylim.sec <- c(0, 150000)    # in this example, temperature
+
+b <- diff(ylim.prim)/diff(ylim.sec)
+a <- b*(ylim.prim[1] - ylim.sec[1])
 
 
+ggplot(maize_nat, aes(year, ag_prod)) +
+  geom_line() +
+  geom_line(aes(y = ag_losses), color = "red") +
+  scale_y_continuous("Production (tonnes)", trans = 'log10', labels = scales::comma, 
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Lost Area (ha) ", labels = scales::comma)) +
+  scale_x_continuous("Year") +
+  ggtitle("Maize Production and Lost Area")
 
-ggplot(aes(state, obs)) +
-  geom_bar(stat = "identity")
+ggplot(maize_nat, aes(year, ag_prod)) +
+  geom_line() +
+  geom_line(aes(y = ag_harv), color = "red") +
+  scale_y_continuous("Production (tonnes)", trans = 'log10', labels = scales::comma, 
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Harvested (ha) ", labels = scales::comma)) +
+  scale_x_continuous("Year") +
+  ggtitle("Maize Production and Harvested Area")
 
-#%>% 
-  filter(complete.cases(.))
+ggplot(maize, aes(year, ag_prod)) +
+  geom_line() +
+  geom_line(aes(y = ag_harv), color = "red") +
+  scale_y_continuous("Production (tonnes)", labels = scales::comma,
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Harvested (ha) ", labels = scales::comma)) +
+  scale_x_continuous("Year") +
+  ggtitle("Maize Production and Harvested Area") +
+  facet_wrap(~state, scales="free_y") 
+
+#### Maize Production Harvested and Lost Area ####
+maize %>% 
+  #filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  ggplot(aes(year, ag_prod)) +
+  geom_line() +
+  geom_line(aes(y = ag_losses), color = "red") +
+  #geom_line(aes(y = ag_harv), color = "red") +
+  scale_y_continuous("Production (tonnes)", trans = "log10", labels = scales::comma,
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Losses (ha) ", labels = scales::comma)) +
+                     #sec.axis = sec_axis(~ (. - a)/b, name = "Harvested Area (ha) ", labels = scales::comma)) +
+  scale_x_continuous("Year") +
+  ggtitle("Maize Production and Lost Area") +
+  #ggtitle("Maize Production and Harvested Area") +
+  theme(legend.title = element_text(colour="blue", size=10, 
+                                   face="bold")) +
+  facet_wrap(~state, scales="free_y") 
+
+
+ylim.prim <- c(0, 400000)   # in this example, precipitation
+ylim.sec <- c(0, 40000)    # in this example, temperature
+
+b <- diff(ylim.prim)/diff(ylim.sec)
+a <- b*(ylim.prim[1] - ylim.sec[1])
+#### Mango Production Harvested and Lost Area ####
+mango %>% 
+  filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  ggplot(aes(year, ag_prod)) +
+  geom_line() +
+  geom_line(aes(y = ag_harv), color = "red") +
+  scale_y_continuous("Production (tonnes)", trans = "log10", labels = scales::comma,
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Harvested Area (ha) ", labels = scales::comma)) +
+  scale_x_continuous("Year") +
+  ggtitle("Mango Production and Harvested Area") +
+  facet_wrap(~state, scales="free_y") 
+
+
