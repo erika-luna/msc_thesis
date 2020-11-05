@@ -23,6 +23,7 @@ library(tidyverse)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(ggpubr)
 library(DT)
 library(psych)
 ```
@@ -30,6 +31,62 @@ library(psych)
 ```{r load data}
 SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
 ```
+
+
+```{r irrigated}
+maize_irri_state <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year < 2002, crop == "maiz", water == "irrigated") %>% 
+  select(year, state, water, yield, losses)
+#maize_irri_state %>% 
+  #DT::datatable()
+
+maize_irri_mun <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year > 2001, crop == "maiz", water == "irrigated") %>% 
+  select(year, state, water, yield, losses)
+maize_irri_mun %>% 
+  DT::datatable()
+```
+
+```{r rainfed state}
+maize_rain_state <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year < 2002, crop == "maiz", water == "rainfed") %>% 
+  select(year, state, water, yield, losses)
+#maize_rain_state %>% 
+  #DT::datatable()
+maize_rain_mun <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year > 2001, crop == "maiz", water == "rainfed") %>% 
+  select(year, state, water, yield, losses)
+maize_rain_mun %>% 
+  DT::datatable()
+```
+
+
+```{r}
+maize_water_state <- bind_rows(maize_irri_state, maize_rain_state)
+maize_water_mun <- bind_rows(maize_irri_mun, maize_rain_mun)
+```
+
+```{r}
+maize_water_state %>% 
+  ggplot(aes(water, yield)) +
+  geom_boxplot() +
+  ylab("Yield (ha)") +
+  xlab("Water mode") +
+  #scale_y_continuous(labels = comma) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+```{r}
+maize_water_mun %>% 
+  ggplot(aes(water, yield)) +
+  geom_boxplot() +
+  ylab("Yield (ha)") +
+  xlab("Water mode") +
+  #scale_y_continuous(labels = comma) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+
+
 
 ```{r}
 one_crop <- SIAP %>% 
@@ -44,6 +101,28 @@ one_crop <- SIAP %>%
 one_crop %>% 
   DT::datatable()
 ```
+
+## Maiz national
+```{r}
+maize_nat <- SIAP %>% 
+  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), crop == "maiz") %>% 
+  group_by(year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+            ag_prod = sum(production),
+            ag_planted = sum(planted),
+            ag_harv = sum(harvested), 
+            ag_losses = sum(losses))
+
+maize_nat %>% 
+  DT::datatable()
+
+
+
+```
+
+
+
+
 ## Number of observations
 ```{r NAs, echo=FALSE}
 crop_full <- one_crop %>% 
@@ -106,7 +185,7 @@ ggplot(maize) +
 ```{r eval=FALSE, include=FALSE}
 maize %>% 
   group_by(state) %>% 
-  complete.cases(ag_yield)
+  complete.cases("baja california")
 ```
 ```{r}
 maize %>%
@@ -191,6 +270,17 @@ maize %>%
   xlab("State") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
 ```
+
+```{r}
+maize %>% 
+  ggplot(aes(water, ag_yield)) +
+  geom_boxplot() +
+  ylab("Yield (tonnes/ha)") +
+  xlab("State") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+```
+
+
 
 ```{r}
 number_obs <- maize %>% 
@@ -309,12 +399,28 @@ maize_ts <- maize %>%
 maize_ts  
 ```
 
-## Regression line
-```{r}
-maize_lm <- maize %>% 
+## Yields ~ Time
+# Maize trends at the national level
+```{r country - yields - years}
+m <- maize_nat %>% 
   ggplot(aes(year, ag_yield)) + 
   geom_point() +
   geom_smooth(method = "lm", se = T) +
+  stat_cor(label.y = 4)+
+  ylab("Yield (tonnes/ha)") +
+  xlab("Years") +
+  ggtitle("Maize Yields") #+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+m
+```
+
+# Maize trends at the state level
+```{r states - yields - years}
+m <- maize %>% 
+  ggplot(aes(year, ag_yield)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  stat_cor()+
   ylab("Yield (tonnes/ha)") +
   xlab("Years") +
   ggtitle("Maize Yields") +
@@ -323,19 +429,43 @@ maize_lm <- maize %>%
             fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
             ymin = -Inf,ymax = Inf) +     
   facet_wrap(~state, scales="free_y", ncol=5) 
-maize_lm
+m
 ```
 
-Yields ~ Temperature
+
+## Yields ~ Temperature
 ```{r load temp}
 tmax_summary <- read.csv("/Users/erikaluna/R\ Studio/climate_data/tmax_summary.csv")
 tmin_summary <- read.csv("/Users/erikaluna/R\ Studio/climate_data/tmin_summary.csv")
 maize_yields_tmax <- left_join(maize, tmax_summary, by = c("state" = "state", "year" = "year"))
 maize_yields_tmin <- left_join(maize, tmin_summary, by = c("state" = "state", "year" = "year"))
 ```
+# Maize yields ~ temperature at the national level
+```{r country - yields - tmax}
+y <- maize_yields_tmax %>% 
+  ggplot(aes(mean_tmax, ag_yield)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  ylab("Yield (tonnes/ha)") +
+  xlab("Temperature (ºC) ") +
+  ggtitle("Maize Yields ~ Max Temperature") #+
+y
+```
 
-```{r yields - tmax}
-yt <- maize_yields_tmax %>% 
+```{r country - yields - tmin}
+y <- maize_yields_tmin %>% 
+  ggplot(aes(mean_tmin, ag_yield)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  ylab("Yield (tonnes/ha)") +
+  xlab("Temperature (ºC) ") +
+  ggtitle("Maize Yields ~ Min Temperature") #+
+y
+```
+
+# Maize yields ~ temperature at the state level
+```{r states - yields - tmax}
+y <- maize_yields_tmax %>% 
   filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora")) %>% 
   ggplot(aes(mean_tmax, ag_yield)) + 
   geom_point() +
@@ -345,9 +475,10 @@ yt <- maize_yields_tmax %>%
   ggtitle("Maize Yields ~ Max Temperature") +
   #theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
   facet_wrap(~state, scales="free_y") 
-yt
+y
 ```
-```{r yields - tmin}
+
+```{r states - yields - tmin}
 yt <- maize_yield_tmin %>% 
   filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora")) %>% 
   ggplot(aes(mean_tmin, ag_yield)) + 
@@ -360,6 +491,37 @@ yt <- maize_yield_tmin %>%
 yt
 ```
 
+## Losses ~ Time
+# Maize losses trends at the national level
+```{r}
+lt <- maize_nat %>% 
+  ggplot(aes(year, ag_losses)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  scale_y_continuous(labels = scales::comma) +
+  ylab("Losses (ha)") +
+  xlab("Years") +
+  ggtitle("Maize Losses") #+
+  #theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+lt
+```
+
+# Maize losses trends at the state level
+```{r}
+lt <- maize %>% 
+  ggplot(aes(year, ag_losses)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = T) +
+  ylab("Losses (ha)") +
+  xlab("Years") +
+  ggtitle("Maize Losses") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  geom_rect(data = subset(maize, state %in% c(maize_complete$state)), 
+            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+lt
+```
 
 ## Losses ~ Temperature
 ```{r losses - tmax}
@@ -389,3 +551,4 @@ lt <- maize_yields_tmin %>%
   facet_wrap(~state, scales="free_y") 
 lt
 ```
+

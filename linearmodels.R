@@ -193,12 +193,58 @@ qplot(year, ag_yield, data = maize, size=I(2))+geom_smooth(method="lm")+
 
 facet_wrap(~state, scales="free_y", ncol=5, labeller = r2_labeller) 
 
-
+library(dplyr)
 
 
 fitted_models = maize %>% group_by(state) %>% do(model = lm(ag_yield ~ year, data = .))
 fitted_models
 library(broom)
-fitted_models %>% tidy(model) %>% DT::datatable()
+v <- fitted_models %>% tidy(model) %>% as_tibble()
+v %>% 
+  DT::datatable()
+
+v %>% 
+  summarise(zia = 2*std.error)
+
+#### Complete cases ####
+library(dplyr)
 
 
+state_level <- SIAP %>% 
+  select(crop, year, state, cycle, water, harvested, losses, production, yield) %>% 
+  filter(year < 2002) 
+mun_level <- SIAP %>% 
+  select(crop, year, state, cycle, water, harvested, losses, production, yield) %>% 
+  filter(year > 2001) 
+
+
+missing_data <- 
+  #state_level %>% 
+  mun_level %>% 
+  group_by(crop) %>%       
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+tmp <- missing_data %>% 
+  #filter(count > 600) #state
+  filter(count > 2000) #mun
+
+h <- tmp %>% 
+  ggplot(aes(reorder(crop, -count), count, fill = crop)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ylab("count") +
+  xlab("crops") +
+  #ggtitle("Data at the state level") +
+  ggtitle("Data at the municipal level") +
+  geom_col()
+h
+
+
+
+
+
+ggplot(aes(state, obs)) +
+  geom_bar(stat = "identity")
+
+#%>% 
+  filter(complete.cases(.))
