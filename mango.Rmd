@@ -335,7 +335,7 @@ m
 ```{r state - yields - years}
 lt <- mango %>% 
   ggplot(aes(year, ag_yield)) + 
-  geom_point() +
+  geom_line() +
   geom_smooth(method = "lm", se = T) +
   ylab("Yields (tonnes/ha)") +
   xlab("Years") +
@@ -413,5 +413,211 @@ mango_lm <- mango_tmin %>%
   ggtitle("Mango Yields ~ Min Temperature") +
   facet_wrap(~state, scales="free_y") 
 mango_lm
+```
+
+```{r}
+
+```
+## lm state level
+```{r}
+
+mango_states <- SIAP %>% 
+  filter(crop == "mango") %>% 
+  group_by(state_code, year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+            ag_prod = sum(production),
+            ag_harv = sum(harvested))
+
+
+tmp <- mango_states %>% 
+  drop_na()
+
+fitted_models = tmp %>% 
+  group_by(state_code) %>% 
+  do(model = lm(ag_yield ~ year, data = ., na.action=na.exclude))
+fitted_models
+library(broom)
+v <- fitted_models %>% tidy(model) %>% as_tibble()
+v %>% 
+  DT::datatable()
+
+v %>% 
+  summarise(zia = 2*std.error)
+
+mango_lm <- v %>% 
+  filter(term == "year") %>% 
+  filter(p.value < 0.05)
+  #summarise(zia = 2*std.error)
+
+mango_lm <- v %>% 
+  filter(term == "year") %>% 
+  #filter(p.value < 0.05) %>% 
+  mutate(two_se = 2*std.error) %>% 
+  drop_na() %>% 
+  filter(abs(estimate) > two_se)
+
+write.csv(mango_lm, file = "mango_lm.csv")
+```
+
+## lm mun level
+```{r}
+
+mango_mun <- SIAP %>% 
+  filter(crop == "mango") %>% 
+  filter(year > 2002) %>% 
+  group_by(mun_code, year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+            ag_prod = sum(production),
+            ag_harv = sum(harvested))
+
+tmp <- mango_mun %>% 
+  drop_na() %>% 
+  filter_all(all_vars(!is.infinite(.)))
+
+
+fitted_models = tmp %>% 
+  group_by(mun_code) %>% 
+  do(model = lm(ag_yield ~ year, data = .))
+fitted_models
+library(broom)
+v <- fitted_models %>% tidy(model) %>% as_tibble()
+v %>% 
+  DT::datatable()
+
+mango_lm_mun <- v %>% 
+  filter(term == "year") %>% 
+  #filter(p.value < 0.05) %>% 
+  mutate(two_se = 2*std.error) %>% 
+  drop_na() %>% 
+  filter(abs(estimate) > two_se)
+  
+  #summarise(zia = 2*std.error)
+
+write.csv(mango_lm_mun, file = "mango_lm_mun.csv")
+```
+
+```{r}
+mango_water <- SIAP %>% 
+  filter(crop == "mango") %>% 
+  drop_na() %>% 
+  group_by(water, year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_harv = sum(harvested))
+
+mango_water %>% 
+    #ggplot(aes(x=year, y=ag_yield, color = water)) +
+    #ggplot(aes(x=year, y=ag_prod, color = water)) +
+    ggplot(aes(x=year, y=ag_harv, color = water)) +
+    #scale_y_continuous("Yield (t/ha)") +
+    #scale_y_continuous("Production (t)", labels = scales::comma) +
+    scale_y_continuous("Harvested Area (ha)", labels = scales::comma) +
+    geom_line() +
+    geom_smooth(method = MASS::rlm, se = F, size = 0.5) +
+    stat_cor() +
+    labs(x="Year")
+
+#ggsave("mango_water_yields.png")
+#ggsave("mango_water_prod.png")
+#ggsave("mango_water_harv.png")
+    #facet_wrap(~state, scales="free_y")
+```
+
+```{r echo=TRUE}
+SIAP %>% 
+  filter(crop == "mango") %>% 
+  drop_na() %>% 
+  group_by(year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_harv = sum(harvested)) %>% 
+    ggplot(aes(x=year, y=ag_prod)) +
+    scale_y_continuous("Yield (t/ha)") +
+    geom_line() +
+    geom_smooth(method = MASS::rlm, se = F) +
+    stat_cor()#+
+    #facet_wrap(~state, scales="free_y")
+```
+
+```{r}
+tmp %>% 
+  ggplot(aes(year, ag_prod)) +
+  geom_line() +
+  geom_line(aes(y = ag_harv), color = "red") +
+  scale_y_continuous("Production (tonnes)", trans = "log10", labels = scales::comma,
+                     sec.axis = sec_axis(~., name = "Harvested Area (ha) ", labels = scales::comma)) +
+  scale_x_continuous("Year") +
+  ggtitle("Mango Production and Harvested Area") #+
+  #facet_wrap(~state, scales="free_y") 
+
+#ylim.prim <- c(0, 400000)   # in this example, precipitation
+#ylim.sec <- c(0, 40000)    # in this example, temperature
+ylim.prim <- c(0, 2000000)   # in this example, precipitation
+ylim.sec <- c(0, 200000)
+
+b <- diff(ylim.prim)/diff(ylim.sec)
+a <- b*(ylim.prim[1] - ylim.sec[1])
+
+SIAP %>% 
+  filter(crop == "mango") %>% 
+  drop_na() %>% 
+  group_by(year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_harv = sum(harvested)) %>%
+  #DT::datatable()
+  ggplot(aes(year, ag_prod)) +
+  geom_line() +
+  geom_line(aes(y = ag_harv), color = "red") +
+  scale_y_continuous("Production (tonnes)", trans = "log10", labels = scales::comma,
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Harvested Area (ha) ", labels = scales::comma)) +
+  scale_x_continuous("Year") +
+  ggtitle("Mango Production and Harvested Area") #+
+  #facet_wrap(~state, scales="free_y") 
+```
+
+```{r}
+mango_irrigated <- SIAP %>% 
+  filter(crop == "mango") %>% 
+  filter(water == "irrigated") %>% 
+  #drop_na() %>% 
+  group_by(year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_harv = sum(harvested))
+
+mango_rainfed <- SIAP %>% 
+  filter(crop == "mango") %>% 
+  filter(water == "rainfed") %>% 
+  #drop_na() %>% 
+  group_by(year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_harv = sum(harvested))
+```
+
+
+
+## log(yield) - log(trend)
+```{r}
+#Extract the yields variable
+mango_irrigated_yields <- mango_irrigated$ag_yield
+mango_rainfed_yields <- mango_rainfed$ag_yield
+
+#Convert to time series object
+mango_irrigated_yields_ts <- ts(mango_irrigated_yields, start = 1980)
+mango_rainfed_yields_ts <- ts(mango_rainfed_yields, start = 1980)
+
+#Obtain trend
+mango_irrigated_yields_trend <- ma(mango_irrigated_yields_ts, order = 4, centre = T )
+mango_rainfed_yields_trend <- ma(mango_rainfed_yields_ts, order = 4, centre = T )
+
+#Remove trend by applying log to ts and trend
+mango_irrigated_detrend <- log(mango_irrigated_yields_ts) - log(mango_irrigated_yields_trend)
+mango_rainfed_detrend <- log(mango_rainfed_yields_ts) - log(mango_rainfed_yields_trend)
+
+#Plot
+log_yield_log_trend <- cbind(mango_irrigated_detrend, mango_rainfed_detrend)
+autoplot(log_yield_log_trend)
 ```
 

@@ -3,6 +3,7 @@ install.packages("robustbase")
 install.packages("plotrix")
 library(robustbase)
 library(plotrix)
+library(tidyverse)
 lmrob(ag_yield ~ year, lm, maize, ag_yield, state)
 
 std.error(ags$ag_yield)
@@ -310,3 +311,247 @@ mango %>%
   facet_wrap(~state, scales="free_y") 
 
 
+##### Histograms ####
+qplot(maize$ag_losses,
+      geom="histogram", 
+      binwidth=10000)
+ggplot(data=maize, aes(maize$ag_yield)) + 
+  geom_histogram(aes(y =..density..), 
+                 breaks=seq(1, 10, by = 1), 
+                 #col="red", 
+                 #fill="green", 
+                 alpha=.2) + 
+  geom_density(col=2) + 
+  labs(title="Histogram for Age", x="Yields", y="Count")
+
+
+
+
+
+#### Explore maize ####
+
+maize %>% 
+  group_by(state) %>% 
+  summarise(max_yield = max(ag_yield, na.rm=T),
+            min_yield = min(ag_yield, na.rm=T),
+            range_yield = max(ag_yield, na.rm=T) - min(ag_yield, na.rm=T),
+            sd_yield = sd(ag_yield, na.rm=T),
+            mean_yield = mean(ag_yield, na.rm=T),
+            median_yield = median(ag_yield, na.rm=T))
+maiz <- SIAP %>% 
+  filter(crop == "maiz") %>% 
+  group_by(year, water) %>% 
+  summarise(max_yield = max(yield, na.rm=T),
+          min_yield = min(yield, na.rm=T),
+          range_yield = max(yield, na.rm=T) - min(yield, na.rm=T),
+          sd_yield = sd(yield, na.rm=T),
+          mean_yield = mean(yield, na.rm=T),
+          median_yield = median(yield, na.rm=T))
+
+# Plot
+maiz %>%
+  ggplot( aes(x=year, y=mean_yield, group=water, color=water)) +
+  geom_line()
+
+
+elote <- SIAP %>% 
+  filter(crop == "maiz") %>% 
+  group_by(cycle, water, year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+            ag_prod = sum(production),
+            ag_planted = sum(planted),
+            ag_harv = sum(harvested), 
+            ag_losses = sum(losses),
+            ag_har = round(sum(harvested)/sum(planted), digits = 2))
+
+elote %>% 
+  ggplot(aes(x=year, y=ag_har, color=water)) +
+  geom_line()+
+  geom_smooth(method = "lm", se = F) +
+  #stat_cor(label.y = 4)+
+  ylab("HAR") +
+  xlab("Year") +
+  facet_wrap(~cycle)
+
+library(dplyr)
+elotito <- elote  %>% 
+  #gather("area", "ha", 4:5)
+  gather("area", "ha", 5:6)
+
+elotito %>% 
+  ggplot(aes(x=year, y=ha, color=cycle)) +
+  scale_y_continuous("Area (ha)", trans = 'log', labels = scales::comma) +
+  geom_line()
+
+trigo <- SIAP %>% 
+  filter(crop == "trigo") %>% 
+  group_by(year) %>% 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+            ag_prod = sum(production),
+            ag_planted = sum(planted),
+            ag_harv = sum(harvested), 
+            ag_losses = sum(losses),
+            ag_har = round(sum(harvested)/sum(planted), digits = 2))
+
+trigo %>% 
+  ggplot(aes(x=year, y=ag_har)) +
+  geom_line()+
+  geom_smooth(method = "lm", se = F) +
+  #stat_cor(label.y = 4)+
+  ylab("HAR") +
+  xlab("Year") 
+
+trigo %>% 
+  ggplot(aes(x=year, y=ag_har, color=cycle)) +
+  geom_line()+
+  geom_smooth(method = "lm", se = F) +
+  #stat_cor(label.y = 4)+
+  ylab("Yield (t/ha)") +
+  xlab("Year") 
+
+mipan <- trigo  %>% 
+  #gather("area", "ha", 4:5)
+  gather("area", "ha", 5:6)
+
+mipan %>% 
+  ggplot(aes(x=year, y=ha, color=area)) +
+  scale_y_continuous("Area (ha)", labels = scales::comma) +
+  geom_line()
+
+ylim.prim <- c(0, 1)   # in this example, precipitation
+ylim.sec <- c(0, 200)    # in this example, temperature
+
+b <- diff(ylim.prim)/diff(ylim.sec)
+a <- b*(ylim.prim[1] - ylim.sec[1])
+#### Mango Production Harvested and Lost Area ####
+trigo %>% 
+  #filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  ggplot(aes(year, ag_har)) +
+  geom_line() +
+  geom_line(aes(y = ag_yield), color = "blue") +
+  scale_y_continuous("HAR", labels = scales::comma,
+                     sec.axis = sec_axis(~ (. - a)/b, name = "Yeld (t/ha) ", labels = scales::comma)) +
+  scale_x_continuous("Year") #+
+  #ggtitle("Mango Production and Harvested Area") +
+  #facet_wrap(~state, scales="free_y") 
+
+
+# Value used to transform the data
+coeff <- 6
+
+# A few constants
+temperatureColor <- "#69b3a2"
+priceColor <- rgb(0.2, 0.6, 0.9, 1)
+
+ggplot(esquite, aes(x=year)) +
+  
+  geom_line( aes(y=ag_har), size=0.5, color=temperatureColor) + 
+  geom_line( aes(y=ag_yield / coeff), size=0.5, color=priceColor) +
+  
+  
+  scale_y_continuous(
+    
+    # Features of the first axis
+    name = "HAR",
+    
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*coeff, name="Yield (t/ha)")
+  ) + 
+  
+  #theme_ipsum() +
+  
+  theme(
+    axis.title.y = element_text(color = temperatureColor, size=13),
+    axis.title.y.right = element_text(color = priceColor, size=13)
+  ) #+
+  
+  ggtitle("Temperature down, price up")
+  
+  esquite <- SIAP %>% 
+    filter(crop_var == "maiz palomero") %>%
+    filter(cycle == "fall-winter")
+  
+  trigo <- SIAP %>% 
+    filter(crop == "trigo") 
+  
+  trigo$crop_var <- factor(trigo$crop_var)
+  trigo <- trigo %>% 
+    #filter(crop_var = "trigo ornamental (manojo)") %>% 
+    group_by(year, cycle) %>% 
+    summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_planted = sum(planted),
+              ag_harv = sum(harvested), 
+              ag_losses = sum(losses),
+              ag_har = round(sum(harvested)/sum(planted), digits = 2))
+  
+  
+  
+   # filter(crop_var == "maiz palomero") %>%
+   # filter(cycle == "fall-winter")
+
+  
+  esquite$crop_var <- factor(esquite$crop_var)
+  esquite <- esquite %>% 
+    group_by(year) %>% 
+    summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_planted = sum(planted),
+              ag_harv = sum(harvested), 
+              ag_losses = sum(losses),
+              ag_har = round(sum(harvested)/sum(planted), digits = 2))
+  
+  esquite %>% 
+    ggplot(aes(x=year, y=ag_yield)) +
+    #scale_y_continuous("Area (ha)", trans = 'log', labels = scales::comma) +
+    geom_line() +
+    geom_smooth(method = "lm", se = F) 
+  
+  
+  #### Mango ####
+  
+  manguito <- SIAP %>% 
+    filter(crop == "mango") 
+  
+  manguito$crop_var <- factor(manguito$crop_var)
+  
+  manguito <- manguito %>% 
+    group_by(state, year) %>% 
+    summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_harv = sum(harvested))
+    
+  library(ggpubr)
+  manguito %>% 
+    ggplot(aes(x=year, y=ag_yield)) +
+    #scale_y_continuous("Area (ha)", trans = 'log', labels = scales::comma) +
+    geom_line() +
+    
+    geom_smooth(method = "lm", se = F) +
+    stat_cor()+
+    facet_wrap(~state, scales="free_y")
+  
+  #### Chile #####
+  chile <- SIAP %>% 
+    filter(crop == "chile") 
+  
+  chile$crop_var <- factor(chile$crop_var)
+  
+  chile <- chile %>% 
+    group_by(state, year) %>% 
+    summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+              ag_prod = sum(production),
+              ag_harv = sum(harvested))
+  
+  library(ggpubr)
+  chile %>% 
+    ggplot(aes(x=year, y=ag_yield)) +
+    #scale_y_continuous("Area (ha)", trans = 'log', labels = scales::comma) +
+    geom_line() +
+    
+    geom_smooth(method = "lm", se = F) +
+    stat_cor()+
+    facet_wrap(~state, scales="free_y")
+  
+
+  
