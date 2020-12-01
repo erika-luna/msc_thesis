@@ -16,7 +16,7 @@ This document explores the mango data from SIAP - Mexico.
 - 26 states report mango production during the time period of 1980 - 2016.
 - There are 962 observations total (26 states x 37 years), one observation/year for each state. 
 
-```{r packages, echo=FALSE}
+```{r packages, include=FALSE}
 #Load packages
 library(tidyverse)
 library(tidyr)
@@ -24,39 +24,95 @@ library(dplyr)
 library(ggplot2)
 library(ggpubr)
 library(DT)
+library(forecast)
 ```
 
 ```{r load data}
 SIAP <- read.csv("/Users/erikaluna/R\ Studio/msc_thesis/SIAP.csv") 
 ```
 
+## Production cycle
+```{r}
+mango_agyear <- read.csv("mango_agyear.csv")
+mango_agyear %>% 
+  ggplot(aes(x=factor(Month,levels=month.name), Production)) +
+  geom_bar(stat = "identity") +
+  ylab("Production (%)") +
+  xlab("Month") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust= 0.5))
+```
+## Water Supply
+# Irrigated
 ```{r irrigated}
 mango_irri_state <- SIAP %>% 
-  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year < 2002, crop == "mango", water == "irrigated") %>% 
-  select(year, state, water, yield, losses)
+  filter(#state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), 
+    year < 1999, 
+    crop == "mango", 
+    water == "irrigated", 
+    production > 0) %>% 
+  select(year, state, water, yield, production, harvested)
 #mango_irri_state %>% 
   #DT::datatable()
 
 mango_irri_mun <- SIAP %>% 
-  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year > 2001, crop == "mango", water == "irrigated") %>% 
-  select(year, state, water, yield, losses)
-mango_irri_mun %>% 
+  filter(#state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), 
+    year > 1998, 
+    crop == "mango", 
+    water == "irrigated", 
+    production > 0) %>% 
+  select(year, state, water, yield, production, harvested)
+#mango_irri_state %>% 
+  #DT::datatable()
+
+### Exploring the irrigated and rainfed data: 
+
+ggplot(mango_irri_state, aes(fill=water, x=year)) + 
+    geom_bar(stat = "count") +
+  facet_wrap(~state)
+
+
+SIAP %>%  #in theory, data is at the municipal level starting on 2003. But more than two observations are present starting on 1999. Municipal id start on 2003. 
+  filter(state == "puebla") %>% 
+  filter(crop == "mango") %>% 
+  filter(year == 2004) %>% 
   DT::datatable()
 ```
-
-```{r rainfed state}
+# Rainfed
+```{r rainfed}
 mango_rain_state <- SIAP %>% 
-  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year < 2002, crop == "mango", water == "rainfed") %>% 
-  select(year, state, water, yield, losses)
+  filter(#state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), 
+         year < 1999, 
+         crop == "mango", 
+         water == "rainfed", 
+         production > 0) %>% 
+  select(year, state, water, yield, production, harvested) 
 #mango_rain_state %>% 
   #DT::datatable()
+mango_rain_state %>% 
+  ggplot(aes(water, yield)) +
+  geom_boxplot() +
+  scale_y_continuous("Yield (ha)", trans = "log10") +
+  ylab("Yield (ha)") +
+  xlab("Water supply")
+
 mango_rain_mun <- SIAP %>% 
-  filter(state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), year > 2001, crop == "mango", water == "rainfed") %>% 
-  select(year, state, water, yield, losses)
+  filter(#state %in% c("baja california","baja california sur", "chihuahua", "durango", "nayarit", "sinaloa", "sonora"), 
+         year > 1998, 
+         crop == "mango", 
+         water == "rainfed",  
+         production > 0) %>% 
+  select(year, state, water, yield, production, harvested)
+#mango_rain_mun %>% 
+  #DT::datatable()
 mango_rain_mun %>% 
-  DT::datatable()
+  ggplot(aes(water, yield)) +
+  geom_boxplot() +
+  scale_y_continuous("Yield (ha)", trans = "log10") +
+  ylab("Yield (ha)") +
+  xlab("Water supply")
 ```
 
+# Irrigated and Rainfed
 ```{r}
 mango_water_state <- bind_rows(mango_irri_state, mango_rain_state)
 mango_water_mun <- bind_rows(mango_irri_mun, mango_rain_mun)
@@ -64,6 +120,9 @@ mango_water_mun <- bind_rows(mango_irri_mun, mango_rain_mun)
 
 ```{r}
 mango_water_state %>% 
+  #DT::datatable()
+  
+  
   ggplot(aes(water, yield)) +
   geom_boxplot() +
   scale_y_continuous("Yield (ha)", trans = "log10") +
@@ -72,6 +131,51 @@ mango_water_state %>%
   ggtitle("Mango State level")
   #scale_y_continuous(labels = comma) +
   #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+
+mango_all <- mango_water_mun%>% 
+  ggplot(aes(year, production, color = water)) + 
+  geom_point() +
+  #geom_smooth(method = "lm", se = T) +
+  ylab("Yields (t/ha)") +
+  xlab("Years") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  #geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            #fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            #ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5)
+  #facet_wrap(~state, ncol=5)
+mango_all
+
+tab <- table(mango_water_state$water, mango_water_state$state)
+
+prop.table(tab)
+
+tab <- with(mango_water_state, table(water, state))
+prop.table(tab, margin = 1)
+prop.table(tab, 1)*100
+tab <- as.data.frame.matrix(tab)
+t <- data.frame(rbind(tab))
+t<- t %>% 
+  gather(state)
+irr_rain <- rep(c("irrigated", "rainfed"), 32) 
+t <- cbind(t, irr_rain)
+t <- t %>% 
+  group_by(state) %>% 
+mutate(percent = 100*value/sum(value)) %>% 
+  drop_na()
+
+irr_states <- t %>% 
+  filter(irr_rain == "irrigated")
+
+write.csv(irr_states, "irr_states.csv")
+
+rain_states <- t %>% 
+  filter(irr_rain == "rainfed")
+
+write.csv(rain_states, "rain_states.csv")
+
+write.csv(t, "water_freq.csv")
+
 ```
 
 ```{r}
@@ -231,6 +335,7 @@ mango %>%
 
 ```{r}
 mango %>% 
+  filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
   ggplot(aes(state, ag_yield)) +
   geom_boxplot() +
   ylab("Yield (tonnes/ha)") +
@@ -334,18 +439,20 @@ m
 # Mango trends at the state level
 ```{r state - yields - years}
 lt <- mango %>% 
-  ggplot(aes(year, ag_yield)) + 
+  filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
+  ggplot(aes(year, ag_harv, color = state)) + 
   geom_line() +
   geom_smooth(method = "lm", se = T) +
   ylab("Yields (tonnes/ha)") +
   xlab("Years") +
   ggtitle("Mango Yields") +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
-  geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
-            fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
-            ymin = -Inf,ymax = Inf) +     
-  facet_wrap(~state, scales="free_y", ncol=5) 
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) #+
+  #geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            #fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            #ymin = -Inf,ymax = Inf) +     
+  #facet_wrap(~state, scales="free_y", ncol=5) 
 lt
+#ggsave()
 ```
 
 
@@ -388,7 +495,8 @@ yt
 
 ```{r states - yields - tmax}
 mango_lm <- mango_tmax %>% 
-  filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% 
+  filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
+  #filter(state %in% c("baja california sur", "durango", "nayarit", "sinaloa", "sonora")) %>% 
   ggplot(aes(mean_tmax, ag_yield)) + 
   geom_point() +
   geom_smooth(method = "lm", se = T) +
@@ -420,43 +528,104 @@ mango_lm
 ```
 ## lm state level
 ```{r}
+#### Packages ####
+library(broom)
 
-mango_states <- SIAP %>% 
+#### Prepare data ####
+mango_states <- SIAP %>%
   filter(crop == "mango") %>% 
-  group_by(state_code, year) %>% 
-  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
+  drop_na() %>% 
+  group_by(state_code, year) %>% #we group by state code so we can merge with the shp file 
+  summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2), 
             ag_prod = sum(production),
             ag_harv = sum(harvested))
 
-
-tmp <- mango_states %>% 
-  drop_na()
-
-fitted_models = tmp %>% 
-  group_by(state_code) %>% 
-  do(model = lm(ag_yield ~ year, data = ., na.action=na.exclude))
-fitted_models
-library(broom)
-v <- fitted_models %>% tidy(model) %>% as_tibble()
-v %>% 
+mango_states %>% 
   DT::datatable()
 
-v %>% 
-  summarise(zia = 2*std.error)
+#### Yields ####
+#fitted_yields = mango_states %>% 
+  #group_by(state_code) %>% 
+  #do(model = rlm(ag_yield ~ year-1, data = ., na.action=na.exclude))
 
-mango_lm <- v %>% 
-  filter(term == "year") %>% 
-  filter(p.value < 0.05)
-  #summarise(zia = 2*std.error)
+fitted_yields = mango_states %>%  
+  group_by(state_code) %>% 
+  #do(model = lm(scale(ag_yield) ~ scale(year), data = ., na.action=na.exclude))
+  do(model = lm(ag_yield ~ year, data = ., na.action=na.exclude))
+  
+fitted_yields <- fitted_yields %>% tidy(model) %>% as_tibble()
 
-mango_lm <- v %>% 
-  filter(term == "year") %>% 
+mango_lm_yield <- fitted_yields %>% 
+  #filter(term == "scale(year)") %>% 
+  filter(term == "year") #%>% 
   #filter(p.value < 0.05) %>% 
-  mutate(two_se = 2*std.error) %>% 
-  drop_na() %>% 
-  filter(abs(estimate) > two_se)
+  #mutate(two_se = 2*std.error) #%>% 
+  #drop_na() %>% 
+  #filter(abs(estimate) > two_se)
 
-write.csv(mango_lm, file = "mango_lm.csv")
+mango_lm_yield %>% 
+  DT::datatable()
+
+library("robustbase")
+mango_states %>% 
+  group_by(state_code) %>% 
+  lmrob(ag_yield ~ year)
+
+
+# lm(scale(your.y) ~ scale(your.x), data=your.Data)
+
+
+#### Production ####
+#fitted_prod = mango_states %>% 
+ # group_by(state_code) %>% 
+  #do(model = lm(ag_prod ~ year-1, data = ., na.action=na.exclude))
+fitted_prod = mango_states %>%  
+  group_by(state_code) %>% 
+  #do(model = lm(scale(ag_prod) ~ scale(year), data = ., na.action=na.exclude))
+  do(model = lm(ag_prod ~ year, data = ., na.action=na.exclude))
+
+fitted_prod <- fitted_prod %>% tidy(model) %>% as_tibble()
+
+mango_lm_prod <- fitted_prod %>% 
+  #filter(term == "scale(year)") %>% 
+  filter(term == "year")# %>% 
+  #filter(p.value < 0.05) %>% 
+  #mutate(two_se = 2*std.error) #%>% 
+  #drop_na() %>% 
+  #filter(abs(estimate) > two_se)
+
+
+
+
+mango_lm_prod %>% 
+  DT::datatable()
+
+#### Harvested Area ####
+#fitted_area = mango_states %>% 
+  #group_by(state_code) %>% 
+  #do(model = lm(ag_harv ~ year-1, data = ., na.action=na.exclude))
+
+fitted_area = mango_states %>%  
+  group_by(state_code) %>% 
+  do(model = lm(ag_harv ~ year, data = ., na.action=na.exclude))
+  
+fitted_area <- fitted_area %>% tidy(model) %>% as_tibble()
+
+mango_lm_area <- fitted_area %>% 
+  filter(term == "year") #%>% 
+  #filter(p.value < 0.05) %>% 
+  #mutate(two_se = 2*std.error) #%>% 
+  #drop_na() %>% 
+  #filter(abs(estimate) > two_se)
+
+mango_lm_area %>% 
+  DT::datatable()
+
+
+#### Write files ####
+write.csv(mango_lm_yield, file = "mango_lm_yield.csv")
+write.csv(mango_lm_prod, file = "mango_lm_prod.csv")
+write.csv(mango_lm_area, file = "mango_lm_area.csv")
 ```
 
 ## lm mun level
@@ -531,7 +700,7 @@ SIAP %>%
   summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
               ag_prod = sum(production),
               ag_harv = sum(harvested)) %>% 
-    ggplot(aes(x=year, y=ag_prod)) +
+    ggplot(aes(x=year, y=ag_yield)) +
     scale_y_continuous("Yield (t/ha)") +
     geom_line() +
     geom_smooth(method = MASS::rlm, se = F) +
@@ -580,8 +749,9 @@ SIAP %>%
 mango_irrigated <- SIAP %>% 
   filter(crop == "mango") %>% 
   filter(water == "irrigated") %>% 
+  filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
   #drop_na() %>% 
-  group_by(year) %>% 
+  group_by(state, year) %>% 
   summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
               ag_prod = sum(production),
               ag_harv = sum(harvested))
@@ -589,8 +759,9 @@ mango_irrigated <- SIAP %>%
 mango_rainfed <- SIAP %>% 
   filter(crop == "mango") %>% 
   filter(water == "rainfed") %>% 
+  filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
   #drop_na() %>% 
-  group_by(year) %>% 
+  group_by(state, year) %>% 
   summarise(ag_yield = round(sum(production)/sum(harvested), digits = 2),
               ag_prod = sum(production),
               ag_harv = sum(harvested))
@@ -605,19 +776,197 @@ mango_irrigated_yields <- mango_irrigated$ag_yield
 mango_rainfed_yields <- mango_rainfed$ag_yield
 
 #Convert to time series object
-mango_irrigated_yields_ts <- ts(mango_irrigated_yields, start = 1980)
-mango_rainfed_yields_ts <- ts(mango_rainfed_yields, start = 1980)
+mango_irrigated_yields_ts <- ts(mango_irrigated_yields, start = 1980, frequency = 4)
+mango_rainfed_yields_ts <- ts(mango_rainfed_yields, start = 1980, frequency = 4)
+
+#NA
+mango_irrigated_yields_ts_nona <- na.approx(mango_irrigated_yields_ts)
+mango_rainfed_yields_ts_nona <- na.approx(mango_rainfed_yields_ts)
 
 #Obtain trend
-mango_irrigated_yields_trend <- ma(mango_irrigated_yields_ts, order = 4, centre = T )
-mango_rainfed_yields_trend <- ma(mango_rainfed_yields_ts, order = 4, centre = T )
+mango_irrigated_yields_trend <- ma(mango_irrigated_yields_ts_nona, order = 3, centre = T )
+mango_rainfed_yields_trend <- ma(mango_rainfed_yields_ts_nona, order = 3, centre = T )
 
 #Remove trend by applying log to ts and trend
-mango_irrigated_detrend <- log(mango_irrigated_yields_ts) - log(mango_irrigated_yields_trend)
-mango_rainfed_detrend <- log(mango_rainfed_yields_ts) - log(mango_rainfed_yields_trend)
+mango_irrigated_detrend <- log(mango_irrigated_yields_ts_nona) - log(mango_irrigated_yields_trend)
+mango_rainfed_detrend <- log(mango_rainfed_yields_ts_nona) - log(mango_rainfed_yields_trend)
 
 #Plot
 log_yield_log_trend <- cbind(mango_irrigated_detrend, mango_rainfed_detrend)
 autoplot(log_yield_log_trend)
 ```
+```{r}
+library("TTR")
+library("zoo")
+
+tmp <- na.approx(mango_irrigated_yields_ts)
+ma <- ma(tmp, order = 3, centre = F )
+plot()
+plot(ma, col = "red")
+
+plot(wineind)
+sm <- ma(wineind,order=12)
+plot(sm,col="red")
+
+
+```
+
+
+
+```{r}
+tmax_ts <- tmax_summary %>% 
+  group_by(year) %>% 
+  summarise(mean_ts = mean(mean_tmax, na.rm = T))
+
+log_yield_log_trend_df <- as.tibble(log_yield_log_trend)
+
+mango_log_tempmax <- cbind(log_yield_log_trend_df, tmax_ts)
+
+mango_log_tempmax %>% 
+  ggplot(aes(mean_ts, mango_irrigated_detrend)) + 
+  geom_point() +
+  #geom_smooth(method = "lm", se = T) +
+  ylab("log (yield) - log (trend)") +
+  xlab("Temperature (ºC) ") #+
+  #ggtitle("Mango Yields ~ Max Temperature")
+ggsave("mango_log_max.png")
+
+max <- tmax_summary %>% 
+  filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
+  filter(year != 1985)
+
+min <- tmin_summary %>% 
+  filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
+  select(mean_tmin)
+
+temp_summary <- cbind(max, min)
+temp_summary <- gather(temp_summary, "temp", "value", mean_tmax, mean_tmin)
+
+temp_summary %>% 
+  #group_by(state, year) %>% 
+  ggplot(aes(year, value, color = temp)) + 
+  geom_line() +
+  #geom_smooth(method = "lm", se = T) +
+  ylab("Temperature (ºC)") +
+  xlab("Year") +
+  theme(legend.title=element_blank()) +
+  scale_color_manual(labels = c("Max", "Min"), values = c("red", "blue")) +
+  #ggtitle("Temperature") +
+  facet_wrap(~state)
+
+
+
+ggsave("temperature.png")
+
+```
+```{r echo=FALSE}
+mango_all <- SIAP %>%
+#t<-    SIAP %>%
+  filter(crop == "mango") %>% 
+  #filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
+  ggplot(aes(year, harvested, color = water)) + 
+  geom_point() +
+  #geom_smooth(method = "lm", se = T) +
+  ylab("Yields (t/ha)") +
+  xlab("Years") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  #geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            #fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            #ymin = -Inf,ymax = Inf) +     
+  facet_wrap(~state, scales="free_y", ncol=5) 
+mango_all
+
+
+
+  mango_all <- SIAP %>%
+  filter(crop == "mango")# %>% 
+  filter(state %in% c("baja california sur", "durango", "sinaloa", "sonora")) %>% 
+  ggplot(aes(year, harvested, color = state)) + 
+  geom_point() +
+  #geom_smooth(method = "lm", se = T) +
+  ylab("Yields (t/ha)") +
+  xlab("Years") +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) #+
+  #geom_rect(data = subset(mango, state %in% c(mango_complete$state)), 
+            #fill = NA, colour = "red", xmin = -Inf,xmax = Inf,
+            #ymin = -Inf,ymax = Inf) +     
+  #facet_wrap(~state, scales="free_y", ncol=5) 
+ggsave("state_yields_all.png")
+ggsave("state_yields.png")
+write.csv(mango_all, "mango.csv")
+```
+
+```{r}
+
+water <- SIAP %>%
+  filter(crop == "mango")
+         #state == "durango") 
+
+table(water$water)
+table3 <- table(water$water, water$state)
+prop.table(table3)
+
+# re-order levels
+reorder_size <- function(x) {
+        factor(x, levels = names(sort(table(x), decreasing = TRUE)))
+}
+
+ggplot(mango_all, aes(x = reorder_size(state))) +
+        geom_bar() +
+        xlab("State") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(water, aes(x = reorder_size(state))) +
+        geom_bar(aes(y = (..count..)/sum(..count..))) +
+        xlab("State or Province") +
+        scale_y_continuous(labels = scales::percent, name = "Proportion") +
+        facet_grid(~ water) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(data = water, aes(x = state, y = harvested, fill = water)) + 
+  geom_bar(stat = "identity", position = position_dodge()) + 
+  xlab("Frequency of Father Visits") + ylab("Percent of Children")
+
+d <- ggplot(water, aes(x= state,  group=water)) + 
+    geom_bar(aes(y = ..prop.., stat="count")) +
+    geom_text(aes( label = scales::percent(..prop..),
+                   y= ..prop.. ), stat= "count", vjust = -.5) +
+    labs(y = "Percent") +
+   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5)) +
+    facet_grid(~water)# +
+    scale_y_continuous(labels = scales::percent)
+
+# Stacked + percent
+q <- mango_all %>% 
+  ggplot(aes(fill=water, y=yield, x=reorder(state, yield))) + 
+    geom_bar(position="fill", stat="identity") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+
+mango_all %>% 
+  group_by(state) %>% 
+  summarise(mean_prod = mean(production)) %>% 
+  ggplot(mango_all, aes(fill=water, y=mean_prod, x=state)) + 
+    geom_bar(position="stack", stat="identity") +
+   scale_y_continuous("Harvested Area (ha)", labels = scales::comma) +
+    xlab("")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+q
+
+q <- ggplot(mango_all, aes(x=reorder(state, -production, mean), y=harvested, fill=water)) + 
+   #geom_bar(position="stack", stat="identity") +
+  geom_bar(stat="identity")+
+   #scale_y_continuous("Production (t)", labels = scales::comma) +
+  scale_y_continuous("Harvested area (ha)", labels = scales::comma) +
+   # xlab("")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust= 0.5))
+
+
+p=ggplot(data=mango_all)  
+p+geom_bar(stat="identity")+  #
+aes(x=reorder(state,-production,sum),y=production,label=production,fill=water)+
+theme()
+```
+
+
+
 

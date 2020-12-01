@@ -10,13 +10,17 @@ std.error(ags$ag_yield)
 
 
 
-ags <- maize %>% 
-  filter(state == "aguascalientes")
+ags <- mango %>% 
+  filter(state == "chiapas")
+
+write.csv(ags, "chiapas.csv")
 
 (my_lm <- lm(ag_yield~ ., data = ags))
 
 (my_lm_otro <- lmrob(ag_yield ~ year, data = ags))
 plot(my_lm_otro)
+
+my_lm_otro <- as.data.frame(my_l)
 
 summary(my_lm_otro)
 plot(my_lm)
