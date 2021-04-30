@@ -24,7 +24,6 @@ levels(SIAP$cycle)[levels(SIAP$cycle)=="otono-invierno"] <- "fall-winter"
 levels(SIAP$cycle)[levels(SIAP$cycle)=="primavera - verano"] <- "spring-summer"
 levels(SIAP$cycle)[levels(SIAP$cycle)=="primavera-verano"] <- "spring-summer"
 levels(SIAP$cycle)[levels(SIAP$cycle)=="perennes"] <- "perennial"
-
 levels(SIAP$water)[levels(SIAP$water)=="riego"] <- "irrigated"
 levels(SIAP$water)[levels(SIAP$water)=="temporal"] <- "rainfed"
 
@@ -32,14 +31,19 @@ levels(SIAP$water)[levels(SIAP$water)=="temporal"] <- "rainfed"
 # Cereals
 levels(SIAP$crop)[levels(SIAP$crop)==""]
 
-# Convert quant variables to numeric (R initially read them as factors)
-SIAP$planted <- as.numeric(levels(SIAP$planted))[SIAP$planted]
-SIAP$harvested <- as.numeric(levels(SIAP$harvested))[SIAP$harvested]
-SIAP$losses <- as.numeric(levels(SIAP$losses))[SIAP$losses]
-SIAP$production <- as.numeric(levels(SIAP$production))[SIAP$production]
-SIAP$yield <- as.numeric(levels(SIAP$yield))[SIAP$yield]
-SIAP$pmr <- as.numeric(levels(SIAP$pmr))[SIAP$pmr]
-SIAP$value <- as.numeric(levels(SIAP$value))[SIAP$value]
+# Convert quant variables to numeric (R initially read them as factors) and read numbers with comma
+SIAP$planted <- as.numeric(gsub(",", "", SIAP$planted))
+SIAP$harvested <- as.numeric(gsub(",", "", SIAP$harvested))
+SIAP$losses <- as.numeric(gsub(",", "", SIAP$losses))
+SIAP$production <- as.numeric(gsub(",", "", SIAP$production))
+SIAP$yield <- as.numeric(gsub(",", "", SIAP$yield))
+SIAP$pmr <- as.numeric(gsub(",", "", SIAP$pmr))
+SIAP$value <- as.numeric(gsub(",", "", SIAP$value))
+
+# exclude zero yield values and NA
+SIAP <- SIAP %>% 
+  drop_na(yield) %>% 
+  filter(yield > 0)
 
 write.csv(SIAP, file = "SIAP.csv")
 
